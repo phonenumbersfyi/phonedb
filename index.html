@@ -475,7 +475,7 @@
     <p class="sub1">Search, submit, and review phone numbers</p>
     <p class="sub2" id="login-hint">You need to be logged in to add, comment, and rate phone numbers</p>
     <div class="search-wrap">
-      <input type="text" id="search-input" placeholder="Search a number…" oninput="handleSearch(this.value)" autocomplete="off" />
+      <input type="text" id="search-input" placeholder="Enter full phone number…" oninput="handleSearch(this.value)" autocomplete="off" />
       <span class="search-icon">⌕</span>
       <div class="search-dropdown" id="search-dropdown"></div>
     </div>
@@ -705,7 +705,7 @@ function handleSearch(val) {
   clearTimeout(searchTimeout);
   const dropdown = document.getElementById('search-dropdown');
   const q = strip(val);
-  if (!q || q.length < 2) { dropdown.classList.remove('open'); return; }
+  if (!q || q.length < 7) { dropdown.classList.remove('open'); return; }
   searchTimeout = setTimeout(() => doSearch(q, val), 300);
 }
 
@@ -713,9 +713,9 @@ async function doSearch(q, raw) {
   const dropdown = document.getElementById('search-dropdown');
   dropdown.innerHTML = `<div class="search-item"><span class="si-meta"><span class="spinner"></span>Searching…</span></div>`;
   dropdown.classList.add('open');
-  const { data } = await db.from('numbers_summary').select('*').ilike('raw', `%${q}%`).limit(8);
+  const { data } = await db.from('numbers_summary').select('*').eq('raw', q).limit(1);
   if (!data || !data.length) {
-    dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">No results for "${raw}"</span></div>`;
+    dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">No exact match found for "${raw}"</span></div>`;
     return;
   }
   dropdown.innerHTML = data.map(n => {
@@ -770,7 +770,7 @@ async function openDetail(id) {
 
   const [numRes, commentsRes, ratingsRes] = await Promise.all([
     db.from('numbers_summary').select('*').eq('id', id).single(),
-    db.from('comments').select('*, profiles(name)').eq('number_id', id).order('created_at', { ascending: false }),
+    db.from('comments').select('*').eq('number_id', id).order('created_at', { ascending: false }),
     db.from('ratings').select('*').eq('number_id', id)
   ]);
 
@@ -908,7 +908,7 @@ async function submitComment() {
     user_id: currentUser.id,
     author_name: currentProfile?.name || currentUser.email,
     text
-  }).select('*, profiles(name)').single();
+  }).select('*').single();
   if (error) { showToast(error.message, 'error'); if(btn){btn.disabled=false;btn.textContent='Post';} return; }
   currentEntry.comments.unshift(data);
   currentEntry.comment_count = (currentEntry.comment_count || 0) + 1;
@@ -936,7 +936,7 @@ function renderComments() {
   }
   el.innerHTML = comments.map(c => {
     const isMe = currentUser && c.user_id === currentUser.id;
-    const name = c.profiles?.name || c.author_name || 'Anonymous';
+    const name = c.author_name || 'Anonymous';
     return `<div class="comment-card${isMe?' mine':''}">
       <div class="comment-text">${c.text}</div>
       <div class="comment-meta">
