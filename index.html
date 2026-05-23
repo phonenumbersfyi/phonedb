@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Phone Numbers</title>
 <meta name="description" content="Search, submit, and review phone numbers. Community-powered phone number database." />
 <!-- Google tag (gtag.js) -->
@@ -417,7 +417,7 @@
     width: 100%; padding: 11px 14px;
     background: var(--bg2); color: var(--text);
     border: 1px solid var(--border2); border-radius: 6px;
-    font-size: 16px; font-family: var(--sans);
+    font-size: 14px; font-family: var(--sans);
     outline: none; margin-bottom: 10px;
     transition: border-color 0.15s;
   }
@@ -765,12 +765,7 @@ function openModal(mode) {
   document.getElementById('modal-bg').classList.add('open');
   setTimeout(() => document.getElementById(modalMode === 'login' ? 'modal-email' : 'modal-name').focus(), 100);
 }
-function closeModal() {
-  document.getElementById('modal-bg').classList.remove('open');
-  // reset iOS zoom after modal closes
-  const viewport = document.querySelector('meta[name=viewport]');
-  viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
 
 async function submitAuth() {
   const btn = document.getElementById('modal-submit');
