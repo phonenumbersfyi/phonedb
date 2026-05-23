@@ -473,7 +473,7 @@
   <div class="hero">
     <h1>Phone Numbers</h1>
     <p class="sub1">Search, submit, and review phone numbers</p>
-    <p class="sub2" id="login-hint">You need to be logged in to post a comment or rate numbers</p>
+    <p class="sub2" id="login-hint">You need to be logged in to add, comment, and rate phone numbers</p>
     <div class="search-wrap">
       <input type="text" id="search-input" placeholder="Search a number…" oninput="handleSearch(this.value)" autocomplete="off" />
       <span class="search-icon">⌕</span>
@@ -735,6 +735,7 @@ document.addEventListener('click', e => {
 
 // ── ADD NUMBER ──
 async function addNumber() {
+  if (!currentUser) { openModal('login'); return; }
   const inp = document.getElementById('new-number-input');
   const msg = document.getElementById('add-msg');
   const raw = strip(inp.value);
@@ -815,13 +816,11 @@ function renderRatingGate() {
         ${selectedRating ? `<span style="font-size:13px;color:var(--text2);margin-left:6px;cursor:default;font-family:var(--mono)">${selectedRating}/5</span>` : ''}
       </div>`;
   } else {
-    gate.innerHTML = `<div class="member-gate">
-      <p>Sign in to rate this number</p>
-      <div class="gate-btns">
-        <button class="btn btn-sm" onclick="openModal('login')">Log in</button>
-        <button class="btn btn-sm btn-primary" onclick="openModal('signup')">Sign up</button>
+    gate.innerHTML = `<div class="star-label">Rate this number:</div>
+      <div class="star-row">
+        ${[1,2,3,4,5].map(i => `<span onclick="openModal('login')" title="Log in to rate">☆</span>`).join('')}
       </div>
-    </div>`;
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;font-family:var(--mono)">Log in to rate this number</div>`;
   }
 }
 
@@ -834,7 +833,8 @@ function litStars(val) {
 }
 
 async function submitRating(val) {
-  if (!currentUser || !currentEntry) return;
+  if (!currentUser) { openModal('login'); return; }
+  if (!currentEntry) return;
   const existing = currentEntry.ratings.find(r => r.user_id === currentUser.id);
   const payload = { number_id: currentEntry.id, user_id: currentUser.id, value: val };
   if (existing) {
@@ -897,7 +897,8 @@ function updateCharCount() {
 
 async function submitComment() {
   const t = document.getElementById('comment-input');
-  if (!t || !currentUser || !currentEntry) return;
+  if (!currentUser) { openModal('login'); return; }
+  if (!t || !currentEntry) return;
   const text = t.value.trim();
   if (!text || text.length > 50) return;
   const btn = document.querySelector('.add-comment .btn-primary');
