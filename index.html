@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PhoneDB — Phone Number Database</title>
+<meta name="description" content="Search, submit, and review phone numbers. Community-powered phone number database." />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #000;
+    --bg1: #0a0a0a;
+    --bg2: #111;
+    --bg3: #1a1a1a;
+    --border: #1f1f1f;
+    --border2: #2a2a2a;
+    --text: #fff;
+    --text2: #888;
+    --text3: #555;
+    --accent: #c8922a;
+    --accent-dim: #3a2a0a;
+    --green: #2a6644;
+    --green-text: #4db87a;
+    --red: #3a1a1a;
+    --red-text: #c44;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  a { color: inherit; text-decoration: none; }
+
+  /* ── NAV ── */
+  .nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 50;
+  }
+  .nav-logo {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    letter-spacing: -0.02em;
+  }
+  .nav-logo span { color: var(--accent); }
+  .nav-right { display: flex; gap: 8px; align-items: center; }
+  .nav-user {
+    font-size: 13px;
+    color: var(--text2);
+    cursor: pointer;
+    font-family: var(--mono);
+    padding: 6px 10px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    transition: border-color 0.15s;
+  }
+  .nav-user:hover { border-color: #444; color: var(--text); }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: var(--sans);
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text);
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--bg3); border-color: #444; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 500; }
+  .btn-primary:hover { background: #ddd; border-color: #ddd; }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-danger { background: var(--red); color: var(--red-text); border-color: #3a1a1a; font-size: 12px; padding: 5px 12px; }
+  .btn-danger:hover { background: #2a0808; }
+
+  /* ── HERO ── */
+  .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 24px 48px;
+    text-align: center;
+  }
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 500;
+    letter-spacing: -0.04em;
+    margin-bottom: 8px;
+  }
+  .hero h1 span { color: var(--accent); }
+  .hero .sub1 { font-size: 14px; color: var(--text2); margin-bottom: 6px; }
+  .hero .sub2 {
+    font-size: 13px;
+    color: var(--text3);
+    margin-bottom: 32px;
+    font-style: italic;
+    font-family: Georgia, serif;
+    letter-spacing: 0.01em;
+  }
+  .hero .sub2.hidden { display: none; }
+
+  /* ── SEARCH ── */
+  .search-wrap { width: 100%; max-width: 520px; position: relative; }
+  .search-wrap input {
+    width: 100%;
+    padding: 14px 48px 14px 18px;
+    background: var(--bg1);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: var(--mono);
+    outline: none;
+    transition: border-color 0.15s;
+    letter-spacing: -0.01em;
+  }
+  .search-wrap input:focus { border-color: #444; }
+  .search-wrap input::placeholder { color: var(--text3); font-family: var(--sans); letter-spacing: 0; }
+  .search-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--text3); font-size: 18px; pointer-events: none; }
+
+  .search-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0; right: 0;
+    background: var(--bg1);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    overflow: hidden;
+    z-index: 100;
+    display: none;
+  }
+  .search-dropdown.open { display: block; }
+  .search-item {
+    padding: 12px 18px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .search-item:last-child { border-bottom: none; }
+  .search-item:hover { background: var(--bg2); }
+  .search-item .si-num { font-family: var(--mono); font-size: 14px; letter-spacing: -0.01em; }
+  .search-item .si-meta { font-size: 12px; color: var(--text3); display: flex; gap: 10px; align-items: center; }
+
+  /* ── MAIN LAYOUT ── */
+  .main { max-width: 680px; margin: 0 auto; padding: 0 24px 80px; }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-family: var(--mono);
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+
+  /* ── ADD NUMBER ── */
+  .add-row { display: flex; gap: 8px; }
+  .add-row input {
+    flex: 1;
+    padding: 10px 14px;
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: var(--mono);
+    outline: none;
+    letter-spacing: -0.01em;
+    transition: border-color 0.15s;
+  }
+  .add-row input:focus { border-color: #444; }
+  .add-row input::placeholder { color: var(--text3); font-family: var(--sans); letter-spacing: 0; }
+
+  /* ── DB STATS ── */
+  .db-stats {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 32px;
+    text-align: center;
+  }
+  .db-stats .count { font-family: var(--mono); font-size: 48px; font-weight: 300; letter-spacing: -0.04em; margin-bottom: 4px; }
+  .db-stats .count-label { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+  .db-stats .hint { font-size: 13px; color: var(--text3); }
+
+  /* ── MESSAGES ── */
+  .msg { font-size: 13px; padding: 10px 14px; border-radius: 6px; margin-top: 10px; }
+  .msg.success { background: #0a1a0f; border: 1px solid #1a3a25; color: var(--green-text); }
+  .msg.error { background: var(--red); border: 1px solid #3a1a1a; color: var(--red-text); }
+
+  /* ── DETAIL VIEW ── */
+  .detail-wrap { max-width: 680px; margin: 0 auto; padding: 24px 24px 80px; }
+  .back-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+  .back-btn {
+    background: none;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    border-radius: 6px;
+    padding: 6px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--sans);
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .back-btn:hover { border-color: #444; color: var(--text); }
+  .detail-num {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 300;
+    letter-spacing: -0.03em;
+  }
+  .badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 32px; }
+  .badge {
+    font-size: 11px;
+    font-family: var(--mono);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    letter-spacing: 0.01em;
+  }
+  .badge.gold { color: var(--accent); border-color: var(--accent-dim); }
+
+  /* ── RATING BLOCK ── */
+  .rating-block {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 32px;
+  }
+  .rating-block h3 { font-size: 11px; font-family: var(--mono); color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+  .rating-summary { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  .rating-num { font-family: var(--mono); font-size: 36px; font-weight: 300; letter-spacing: -0.04em; }
+  .rating-stars { font-size: 20px; color: var(--accent); letter-spacing: 2px; }
+  .rating-votes { font-size: 13px; color: var(--text3); }
+  .star-row { display: flex; gap: 8px; align-items: center; }
+  .star-row span { font-size: 28px; cursor: pointer; color: var(--border2); transition: color 0.1s; user-select: none; line-height: 1; }
+  .star-row span.lit { color: var(--accent); }
+  .star-label { font-size: 13px; color: var(--text2); margin-bottom: 8px; }
+  .member-gate {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .member-gate p { font-size: 13px; color: var(--text2); flex: 1; }
+  .member-gate .gate-btns { display: flex; gap: 6px; }
+
+  /* ── COMMENTS ── */
+  .comments-section h3 { font-size: 11px; font-family: var(--mono); color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 16px; }
+  .comment-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+  }
+  .comment-card.mine { border-color: var(--border2); background: var(--bg2); }
+  .comment-text { font-size: 14px; color: #ddd; line-height: 1.6; margin-bottom: 8px; }
+  .comment-meta { font-size: 12px; color: var(--text3); display: flex; justify-content: space-between; align-items: center; }
+  .comment-meta .left { display: flex; gap: 12px; }
+  .comment-author { color: var(--text2); font-weight: 500; font-family: var(--mono); font-size: 12px; }
+  .you-badge {
+    font-size: 10px;
+    font-family: var(--mono);
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text3);
+    padding: 1px 7px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+  }
+  .add-comment { margin-bottom: 24px; }
+  .add-comment input {
+    width: 100%;
+    padding: 12px 14px;
+    background: var(--bg2);
+    color: var(--text);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .add-comment input:focus { border-color: #444; }
+  .add-comment input::placeholder { color: var(--text3); }
+  .comment-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .char-count { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .char-count.warn { color: #c87533; }
+  .char-count.over { color: var(--red-text); }
+  .already-block {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .already-block .al-label { font-size: 12px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .already-block .al-text { font-size: 14px; color: #bbb; font-style: italic; }
+  .empty { text-align: center; padding: 32px; color: var(--text3); font-size: 13px; }
+
+  /* ── PROFILE PAGE ── */
+  .profile-wrap { max-width: 680px; margin: 0 auto; padding: 24px 24px 80px; }
+  .profile-header { display: flex; align-items: center; gap: 18px; margin-bottom: 32px; }
+  .avatar {
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 20px;
+    color: var(--text2);
+    flex-shrink: 0;
+  }
+  .profile-info h2 { font-family: var(--mono); font-size: 20px; font-weight: 400; letter-spacing: -0.03em; margin-bottom: 4px; }
+  .profile-info p { font-size: 13px; color: var(--text2); }
+  .profile-info .since { font-size: 12px; color: var(--text3); margin-top: 2px; font-family: var(--mono); }
+  .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 32px; }
+  .stat-box { background: var(--bg1); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; }
+  .stat-box .sn { font-family: var(--mono); font-size: 28px; font-weight: 300; letter-spacing: -0.04em; margin-bottom: 4px; }
+  .stat-box .sl { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.07em; font-family: var(--mono); }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab-btn {
+    background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--text3); font-size: 13px; padding: 8px 18px;
+    cursor: pointer; margin-bottom: -1px; font-family: var(--sans);
+    transition: color 0.15s;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+  .tab-btn:hover:not(.active) { color: var(--text2); }
+  .activity-card {
+    background: var(--bg1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .activity-card:hover { border-color: var(--border2); }
+  .activity-card .ac-num { font-family: var(--mono); font-size: 15px; letter-spacing: -0.01em; margin-bottom: 6px; }
+  .activity-card .ac-comment { font-size: 13px; color: #bbb; font-style: italic; margin-bottom: 6px; }
+  .activity-card .ac-meta { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+  .activity-card .ac-stars { color: var(--accent); font-size: 14px; margin-bottom: 4px; }
+  .no-activity { text-align: center; padding: 48px 16px; color: var(--text3); font-size: 13px; line-height: 1.8; }
+
+  /* ── MODAL ── */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 200;
+    align-items: center; justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--bg1);
+    border: 1px solid var(--border2);
+    border-radius: 12px;
+    padding: 32px;
+    width: 320px;
+    position: relative;
+  }
+  .modal h3 { font-family: var(--mono); font-size: 18px; font-weight: 400; letter-spacing: -0.03em; margin-bottom: 6px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .modal input {
+    width: 100%; padding: 11px 14px;
+    background: var(--bg2); color: var(--text);
+    border: 1px solid var(--border2); border-radius: 6px;
+    font-size: 14px; font-family: var(--sans);
+    outline: none; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .modal input:focus { border-color: #444; }
+  .modal-close {
+    position: absolute; top: 12px; right: 14px;
+    background: none; border: none; color: var(--text3);
+    cursor: pointer; font-size: 20px; line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .modal-actions button { flex: 1; }
+  .modal-note { font-size: 11px; color: var(--text3); text-align: center; margin-top: 16px; font-family: var(--mono); }
+  .modal-err { font-size: 13px; color: var(--red-text); margin-bottom: 10px; display: none; }
+
+  /* ── LOADING ── */
+  .loading { text-align: center; padding: 48px; color: var(--text3); font-family: var(--mono); font-size: 13px; }
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid var(--border2); border-top-color: var(--text2);
+    border-radius: 50%; animation: spin 0.7s linear infinite; margin-right: 8px;
+    vertical-align: -3px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--bg2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 20px;
+    font-size: 13px; font-family: var(--mono);
+    z-index: 300; opacity: 0; transition: opacity 0.2s;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  .toast.success { border-color: #1a3a25; color: var(--green-text); }
+  .toast.error { border-color: #3a1a1a; color: var(--red-text); }
+
+  @media (max-width: 600px) {
+    .hero { padding: 40px 16px 32px; }
+    .hero h1 { font-size: 22px; }
+    .main, .detail-wrap, .profile-wrap { padding-left: 16px; padding-right: 16px; }
+    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat-box .sn { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <span class="nav-logo" onclick="showView('home')">Phone<span>DB</span></span>
+  <div class="nav-right" id="nav-right">
+    <button class="btn btn-sm" onclick="openModal('login')">Log in</button>
+    <button class="btn btn-sm btn-primary" onclick="openModal('signup')">Sign up</button>
+  </div>
+</nav>
+
+<!-- HOME VIEW -->
+<div id="view-home">
+  <div class="hero">
+    <h1>Phone<span>DB</span></h1>
+    <p class="sub1">Search, submit, and review phone numbers</p>
+    <p class="sub2" id="login-hint">You need to be logged in to post a comment or rate numbers</p>
+    <div class="search-wrap">
+      <input type="text" id="search-input" placeholder="Search a number…" oninput="handleSearch(this.value)" autocomplete="off" />
+      <span class="search-icon">⌕</span>
+      <div class="search-dropdown" id="search-dropdown"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div style="margin-bottom: 32px;">
+      <div class="section-label">Submit a Number</div>
+      <div class="add-row">
+        <input type="text" id="new-number-input" placeholder="e.g. (555) 867-5309" maxlength="20" onkeydown="if(event.key==='Enter')addNumber()" />
+        <button class="btn btn-primary" onclick="addNumber()">Add</button>
+      </div>
+      <div id="add-msg"></div>
+    </div>
+    <hr class="divider" />
+    <div>
+      <div class="section-label">Database</div>
+      <div class="db-stats">
+        <div class="count" id="db-count">—</div>
+        <div class="count-label">phone numbers indexed</div>
+        <div class="hint">Use the search bar above to look up a specific number</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL VIEW -->
+<div id="view-detail" style="display:none">
+  <div class="detail-wrap">
+    <div class="back-row">
+      <button class="back-btn" onclick="showView('home')">← Back</button>
+      <div class="detail-num" id="detail-num"></div>
+    </div>
+    <div class="badges" id="detail-badges"></div>
+    <hr class="divider" style="margin-top:0" />
+
+    <div class="rating-block">
+      <h3>Community Rating</h3>
+      <div class="rating-summary">
+        <span class="rating-num" id="r-avg">—</span>
+        <span class="rating-stars" id="r-stars"></span>
+        <span class="rating-votes" id="r-votes"></span>
+      </div>
+      <div id="rating-gate"></div>
+    </div>
+
+    <div class="comments-section">
+      <h3>Comments</h3>
+      <div id="comment-input-area"></div>
+      <div id="comments-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE VIEW -->
+<div id="view-profile" style="display:none">
+  <div class="profile-wrap">
+    <div class="back-row">
+      <button class="back-btn" onclick="showView('home')">← Back</button>
+      <span style="font-family: var(--mono); font-size: 15px; color: var(--text2)">my profile</span>
+    </div>
+    <div class="profile-header">
+      <div class="avatar" id="p-avatar"></div>
+      <div class="profile-info">
+        <h2 id="p-name"></h2>
+        <p id="p-email"></p>
+        <p class="since" id="p-since"></p>
+      </div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="sn" id="ps-comments">0</div><div class="sl">Comments</div></div>
+      <div class="stat-box"><div class="sn" id="ps-ratings">0</div><div class="sl">Ratings</div></div>
+      <div class="stat-box"><div class="sn" id="ps-numbers">0</div><div class="sl">Numbers</div></div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-comments" onclick="switchTab('comments')">Comments</button>
+      <button class="tab-btn" id="tab-ratings" onclick="switchTab('ratings')">Ratings</button>
+      <button class="tab-btn" id="tab-all" onclick="switchTab('all')">All Activity</button>
+    </div>
+    <div id="profile-activity"></div>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3 id="modal-title">Log in</h3>
+    <p id="modal-sub">Access member features</p>
+    <div class="modal-err" id="modal-err"></div>
+    <input type="text" id="modal-name" placeholder="Your name" style="display:none" />
+    <input type="email" id="modal-email" placeholder="Email address" />
+    <input type="password" id="modal-pass" placeholder="Password" onkeydown="if(event.key==='Enter')submitAuth()" />
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-submit" onclick="submitAuth()">Continue</button>
+    </div>
+    <p class="modal-note" id="modal-switch"></p>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SUPABASE INIT ──
+const SUPA_URL = 'https://rlkjxnfohukaaylckryk.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsa2p4bmZvaHVrYWF5bGNrcnlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1MDM4ODEsImV4cCI6MjA5NTA3OTg4MX0.97xHMY5V-CZVlEpKFi47dJWXK6jw4lZorVhYmyL5P-w';
+const { createClient } = supabase;
+const db = createClient(SUPA_URL, SUPA_KEY);
+
+// ── STATE ──
+let currentUser = null;
+let currentProfile = null;
+let currentEntry = null;
+let currentTab = 'comments';
+let modalMode = 'login';
+let searchTimeout = null;
+let selectedRating = 0;
+
+// ── UTILS ──
+function strip(n) { return n.replace(/[\s\-().+]/g, ''); }
+function formatNum(raw) {
+  const d = raw.replace(/\D/g, '');
+  if (d.length === 10) return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  if (d.length === 11 && d[0] === '1') return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`;
+  return raw;
+}
+function starsStr(v) { const f = Math.round(v); return '★'.repeat(f) + '☆'.repeat(5 - f); }
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(); }
+function fmtDate(ts) {
+  return new Date(ts).toLocaleString('en-US', { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+}
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = `toast show ${type}`;
+  setTimeout(() => { t.className = 'toast'; }, 3000);
+}
+
+// ── VIEW MANAGEMENT ──
+function showView(name) {
+  ['home','detail','profile'].forEach(v => {
+    document.getElementById(`view-${v}`).style.display = v === name ? 'block' : 'none';
+  });
+  if (name === 'home') loadCount();
+  window.scrollTo(0, 0);
+}
+
+// ── AUTH ──
+db.auth.onAuthStateChange(async (event, session) => {
+  currentUser = session?.user || null;
+  if (currentUser) {
+    const { data } = await db.from('profiles').select('*').eq('id', currentUser.id).single();
+    currentProfile = data;
+    const firstName = (currentProfile?.name || currentUser.email).split(' ')[0];
+    document.getElementById('nav-right').innerHTML = `
+      <span class="nav-user" onclick="openProfileView()">⌂ ${firstName}</span>
+      <button class="btn btn-sm" onclick="signOut()">Log out</button>`;
+    document.getElementById('login-hint').classList.add('hidden');
+  } else {
+    currentProfile = null;
+    document.getElementById('nav-right').innerHTML = `
+      <button class="btn btn-sm" onclick="openModal('login')">Log in</button>
+      <button class="btn btn-sm btn-primary" onclick="openModal('signup')">Sign up</button>`;
+    document.getElementById('login-hint').classList.remove('hidden');
+  }
+  if (currentEntry) { renderRatingGate(); renderCommentArea(); }
+});
+
+function openModal(mode) {
+  modalMode = mode;
+  const isLogin = mode === 'login';
+  document.getElementById('modal-title').textContent = isLogin ? 'Log in' : 'Create account';
+  document.getElementById('modal-sub').textContent = isLogin ? 'Access member features' : 'Join to comment and rate';
+  document.getElementById('modal-name').style.display = isLogin ? 'none' : 'block';
+  document.getElementById('modal-switch').innerHTML = isLogin
+    ? `No account? <span style="color:var(--text);cursor:pointer;text-decoration:underline" onclick="openModal('signup')">Sign up</span>`
+    : `Have an account? <span style="color:var(--text);cursor:pointer;text-decoration:underline" onclick="openModal('login')">Log in</span>`;
+  document.getElementById('modal-err').style.display = 'none';
+  document.getElementById('modal-bg').classList.add('open');
+  setTimeout(() => document.getElementById(modalMode === 'login' ? 'modal-email' : 'modal-name').focus(), 100);
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+
+async function submitAuth() {
+  const btn = document.getElementById('modal-submit');
+  const errEl = document.getElementById('modal-err');
+  const email = document.getElementById('modal-email').value.trim();
+  const pass = document.getElementById('modal-pass').value;
+  const name = document.getElementById('modal-name').value.trim();
+  errEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    if (modalMode === 'signup') {
+      if (!name) { errEl.textContent = 'Please enter your name.'; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Continue'; return; }
+      const { error } = await db.auth.signUp({ email, password: pass, options: { data: { name } } });
+      if (error) throw error;
+      showToast('Account created — check your email to confirm', 'success');
+      closeModal();
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+      showToast('Signed in', 'success');
+      closeModal();
+    }
+  } catch (e) {
+    errEl.textContent = e.message || 'Something went wrong.';
+    errEl.style.display = 'block';
+  }
+  btn.disabled = false; btn.textContent = 'Continue';
+}
+
+async function signOut() {
+  await db.auth.signOut();
+  showView('home');
+  showToast('Signed out', 'success');
+}
+
+// ── LOAD COUNT ──
+async function loadCount() {
+  const { count } = await db.from('numbers').select('*', { count: 'exact', head: true });
+  document.getElementById('db-count').textContent = count ?? 0;
+}
+
+// ── SEARCH ──
+function handleSearch(val) {
+  clearTimeout(searchTimeout);
+  const dropdown = document.getElementById('search-dropdown');
+  const q = strip(val);
+  if (!q || q.length < 2) { dropdown.classList.remove('open'); return; }
+  searchTimeout = setTimeout(() => doSearch(q, val), 300);
+}
+
+async function doSearch(q, raw) {
+  const dropdown = document.getElementById('search-dropdown');
+  dropdown.innerHTML = `<div class="search-item"><span class="si-meta"><span class="spinner"></span>Searching…</span></div>`;
+  dropdown.classList.add('open');
+  const { data } = await db.from('numbers_summary').select('*').ilike('raw', `%${q}%`).limit(8);
+  if (!data || !data.length) {
+    dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">No results for "${raw}"</span></div>`;
+    return;
+  }
+  dropdown.innerHTML = data.map(n => {
+    const stars = n.avg_rating ? `<span style="color:var(--accent);font-size:11px">${starsStr(n.avg_rating)}</span>` : '';
+    return `<div class="search-item" onclick="openDetail('${n.id}')">
+      <span class="si-num">${n.display}</span>
+      <span class="si-meta">${stars}<span>${n.comment_count} comment${n.comment_count!=1?'s':''}</span></span>
+    </div>`;
+  }).join('');
+}
+
+document.addEventListener('click', e => {
+  const d = document.getElementById('search-dropdown');
+  const s = document.getElementById('search-input');
+  if (!d.contains(e.target) && e.target !== s) d.classList.remove('open');
+});
+
+// ── ADD NUMBER ──
+async function addNumber() {
+  const inp = document.getElementById('new-number-input');
+  const msg = document.getElementById('add-msg');
+  const raw = strip(inp.value);
+  if (!raw || raw.length < 7) { msg.innerHTML = `<div class="msg error">Enter a valid phone number (at least 7 digits).</div>`; return; }
+  const display = formatNum(inp.value);
+  const btn = document.querySelector('.add-row .btn-primary');
+  btn.disabled = true; btn.textContent = '...';
+  const { error } = await db.from('numbers').insert({ raw, display });
+  btn.disabled = false; btn.textContent = 'Add';
+  if (error) {
+    msg.innerHTML = `<div class="msg error">${error.code === '23505' ? 'This number is already in the database.' : error.message}</div>`;
+  } else {
+    inp.value = '';
+    msg.innerHTML = `<div class="msg success">Number added successfully.</div>`;
+    loadCount();
+    setTimeout(() => { msg.innerHTML = ''; }, 3000);
+  }
+}
+
+// ── OPEN DETAIL ──
+async function openDetail(id) {
+  document.getElementById('search-dropdown').classList.remove('open');
+  document.getElementById('detail-num').textContent = '';
+  document.getElementById('detail-badges').innerHTML = '';
+  document.getElementById('r-avg').textContent = '—';
+  document.getElementById('r-stars').textContent = '';
+  document.getElementById('r-votes').textContent = '';
+  document.getElementById('rating-gate').innerHTML = `<div class="loading"><span class="spinner"></span>Loading…</div>`;
+  document.getElementById('comment-input-area').innerHTML = '';
+  document.getElementById('comments-list').innerHTML = `<div class="loading"><span class="spinner"></span>Loading…</div>`;
+  showView('detail');
+
+  const [numRes, commentsRes, ratingsRes] = await Promise.all([
+    db.from('numbers_summary').select('*').eq('id', id).single(),
+    db.from('comments').select('*, profiles(name)').eq('number_id', id).order('created_at', { ascending: false }),
+    db.from('ratings').select('*').eq('number_id', id)
+  ]);
+
+  if (numRes.error || !numRes.data) { showToast('Number not found', 'error'); showView('home'); return; }
+  currentEntry = { ...numRes.data, comments: commentsRes.data || [], ratings: ratingsRes.data || [] };
+  selectedRating = 0;
+
+  renderDetailHeader();
+  renderRatingBlock();
+  renderCommentArea();
+  renderComments();
+}
+
+function renderDetailHeader() {
+  const n = currentEntry;
+  document.getElementById('detail-num').textContent = n.display;
+  const avg = parseFloat(n.avg_rating);
+  document.getElementById('detail-badges').innerHTML = `
+    <span class="badge">${n.comment_count} comment${n.comment_count!=1?'s':''}</span>
+    <span class="badge">Added ${fmtDate(n.created_at)}</span>
+    ${n.avg_rating ? `<span class="badge gold">${avg.toFixed(1)} ★ (${n.rating_count} rating${n.rating_count!=1?'s':''})</span>` : ''}`;
+}
+
+function renderRatingBlock() {
+  const n = currentEntry;
+  const avg = parseFloat(n.avg_rating);
+  document.getElementById('r-avg').textContent = n.avg_rating ? avg.toFixed(1) : '—';
+  document.getElementById('r-stars').textContent = n.avg_rating ? starsStr(avg) : '';
+  document.getElementById('r-votes').textContent = n.rating_count ? `${n.rating_count} rating${n.rating_count!=1?'s':''}` : 'No ratings yet';
+  renderRatingGate();
+}
+
+function renderRatingGate() {
+  const gate = document.getElementById('rating-gate');
+  if (!gate) return;
+  if (currentUser) {
+    const mine = currentEntry?.ratings?.find(r => r.user_id === currentUser.id);
+    selectedRating = mine ? mine.value : 0;
+    gate.innerHTML = `
+      <div class="star-label">${mine ? 'Your rating:' : 'Rate this number:'}</div>
+      <div class="star-row" id="star-row">
+        ${[1,2,3,4,5].map(i => `<span data-v="${i}" class="${selectedRating>=i?'lit':''}" onclick="submitRating(${i})" onmouseenter="litStars(${i})" onmouseleave="litStars(${selectedRating})">${selectedRating>=i?'★':'☆'}</span>`).join('')}
+        ${selectedRating ? `<span style="font-size:13px;color:var(--text2);margin-left:6px;cursor:default;font-family:var(--mono)">${selectedRating}/5</span>` : ''}
+      </div>`;
+  } else {
+    gate.innerHTML = `<div class="member-gate">
+      <p>Sign in to rate this number</p>
+      <div class="gate-btns">
+        <button class="btn btn-sm" onclick="openModal('login')">Log in</button>
+        <button class="btn btn-sm btn-primary" onclick="openModal('signup')">Sign up</button>
+      </div>
+    </div>`;
+  }
+}
+
+function litStars(val) {
+  document.querySelectorAll('#star-row span[data-v]').forEach(s => {
+    const v = parseInt(s.dataset.v);
+    s.textContent = v <= val ? '★' : '☆';
+    s.className = v <= val ? 'lit' : '';
+  });
+}
+
+async function submitRating(val) {
+  if (!currentUser || !currentEntry) return;
+  const existing = currentEntry.ratings.find(r => r.user_id === currentUser.id);
+  const payload = { number_id: currentEntry.id, user_id: currentUser.id, value: val };
+  if (existing) {
+    await db.from('ratings').update({ value: val }).eq('id', existing.id);
+    existing.value = val;
+  } else {
+    const { data } = await db.from('ratings').insert(payload).select().single();
+    if (data) currentEntry.ratings.push(data);
+  }
+  selectedRating = val;
+  // refresh summary
+  const { data: fresh } = await db.from('numbers_summary').select('*').eq('id', currentEntry.id).single();
+  if (fresh) { currentEntry = { ...currentEntry, ...fresh }; }
+  renderRatingBlock();
+  renderDetailHeader();
+  showToast('Rating saved', 'success');
+}
+
+// ── COMMENTS ──
+function renderCommentArea() {
+  const el = document.getElementById('comment-input-area');
+  if (!el) return;
+  if (!currentUser) {
+    el.innerHTML = `<div class="member-gate" style="margin-bottom:24px">
+      <p>Sign in to post a comment</p>
+      <div class="gate-btns">
+        <button class="btn btn-sm" onclick="openModal('login')">Log in</button>
+        <button class="btn btn-sm btn-primary" onclick="openModal('signup')">Sign up</button>
+      </div>
+    </div>`;
+    return;
+  }
+  const mine = currentEntry?.comments?.find(c => c.user_id === currentUser.id);
+  if (mine) {
+    el.innerHTML = `<div class="already-block">
+      <div>
+        <div class="al-label">your comment</div>
+        <div class="al-text">"${mine.text}"</div>
+      </div>
+      <button class="btn btn-danger" onclick="deleteComment('${mine.id}')">Delete</button>
+    </div>`;
+  } else {
+    el.innerHTML = `<div class="add-comment">
+      <input type="text" id="comment-input" placeholder="Short note… (max 50 chars)" maxlength="50" oninput="updateCharCount()" onkeydown="if(event.key==='Enter')submitComment()" />
+      <div class="comment-footer">
+        <span class="char-count" id="char-count">0 / 50</span>
+        <button class="btn btn-primary btn-sm" onclick="submitComment()">Post</button>
+      </div>
+    </div>`;
+  }
+}
+
+function updateCharCount() {
+  const t = document.getElementById('comment-input'), c = document.getElementById('char-count');
+  if (!t || !c) return;
+  const len = t.value.length;
+  c.textContent = `${len} / 50`;
+  c.className = 'char-count' + (len >= 50 ? ' over' : len > 40 ? ' warn' : '');
+}
+
+async function submitComment() {
+  const t = document.getElementById('comment-input');
+  if (!t || !currentUser || !currentEntry) return;
+  const text = t.value.trim();
+  if (!text || text.length > 50) return;
+  const btn = document.querySelector('.add-comment .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const { data, error } = await db.from('comments').insert({
+    number_id: currentEntry.id,
+    user_id: currentUser.id,
+    author_name: currentProfile?.name || currentUser.email,
+    text
+  }).select('*, profiles(name)').single();
+  if (error) { showToast(error.message, 'error'); if(btn){btn.disabled=false;btn.textContent='Post';} return; }
+  currentEntry.comments.unshift(data);
+  currentEntry.comment_count = (currentEntry.comment_count || 0) + 1;
+  renderCommentArea(); renderComments(); renderDetailHeader();
+  showToast('Comment posted', 'success');
+}
+
+async function deleteComment(id) {
+  if (!currentUser) return;
+  const { error } = await db.from('comments').delete().eq('id', id);
+  if (error) { showToast(error.message, 'error'); return; }
+  currentEntry.comments = currentEntry.comments.filter(c => c.id !== id);
+  currentEntry.comment_count = Math.max(0, (currentEntry.comment_count || 1) - 1);
+  renderCommentArea(); renderComments(); renderDetailHeader();
+  showToast('Comment deleted', 'success');
+}
+
+function renderComments() {
+  const el = document.getElementById('comments-list');
+  if (!el) return;
+  const comments = currentEntry?.comments || [];
+  if (!comments.length) {
+    el.innerHTML = `<div class="empty">No comments yet. ${currentUser ? 'Be the first.' : 'Log in to be the first.'}</div>`;
+    return;
+  }
+  el.innerHTML = comments.map(c => {
+    const isMe = currentUser && c.user_id === currentUser.id;
+    const name = c.profiles?.name || c.author_name || 'Anonymous';
+    return `<div class="comment-card${isMe?' mine':''}">
+      <div class="comment-text">${c.text}</div>
+      <div class="comment-meta">
+        <div class="left">
+          <span class="comment-author">${name}</span>
+          <span>${fmtDate(c.created_at)}</span>
+        </div>
+        ${isMe ? `<span class="you-badge">you</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── PROFILE ──
+async function openProfileView() {
+  if (!currentUser) { openModal('login'); return; }
+  showView('profile');
+  document.getElementById('p-avatar').textContent = initials(currentProfile?.name || currentUser.email);
+  document.getElementById('p-name').textContent = currentProfile?.name || currentUser.email;
+  document.getElementById('p-email').textContent = currentUser.email;
+  document.getElementById('p-since').textContent = `member since ${fmtDate(currentUser.created_at)}`;
+  await loadProfileActivity('comments');
+}
+
+async function loadProfileActivity(tab) {
+  currentTab = tab;
+  ['comments','ratings','all'].forEach(t => {
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+  document.getElementById('profile-activity').innerHTML = `<div class="loading"><span class="spinner"></span>Loading…</div>`;
+
+  const [commentsRes, ratingsRes] = await Promise.all([
+    db.from('comments').select('*, numbers(display, id)').eq('user_id', currentUser.id).order('created_at', { ascending: false }),
+    db.from('ratings').select('*, numbers(display, id)').eq('user_id', currentUser.id).order('created_at', { ascending: false })
+  ]);
+
+  const myComments = commentsRes.data || [];
+  const myRatings = ratingsRes.data || [];
+  const reviewed = new Set([...myComments.map(c => c.number_id), ...myRatings.map(r => r.number_id)]);
+
+  document.getElementById('ps-comments').textContent = myComments.length;
+  document.getElementById('ps-ratings').textContent = myRatings.length;
+  document.getElementById('ps-numbers').textContent = reviewed.size;
+
+  let html = '';
+
+  if (tab === 'comments' || tab === 'all') {
+    if (tab === 'all' && myComments.length) html += `<div class="section-label" style="margin-bottom:12px">Comments</div>`;
+    if (myComments.length) {
+      myComments.forEach(c => {
+        html += `<div class="activity-card" onclick="openDetail('${c.number_id}')">
+          <div class="ac-num">${c.numbers?.display || 'Unknown'}</div>
+          <div class="ac-comment">"${c.text}"</div>
+          <div class="ac-meta">${fmtDate(c.created_at)}</div>
+        </div>`;
+      });
+    } else if (tab === 'comments') {
+      html = `<div class="no-activity">No comments posted yet.<br>Search for a number to get started.</div>`;
+    }
+  }
+
+  if (tab === 'ratings' || tab === 'all') {
+    if (tab === 'all' && myRatings.length && myComments.length) html += `<hr class="divider">`;
+    if (tab === 'all' && myRatings.length) html += `<div class="section-label" style="margin-bottom:12px">Ratings</div>`;
+    if (myRatings.length) {
+      myRatings.forEach(r => {
+        html += `<div class="activity-card" onclick="openDetail('${r.number_id}')">
+          <div class="ac-num">${r.numbers?.display || 'Unknown'}</div>
+          <div class="ac-stars">${starsStr(r.value)} <span style="font-size:12px;color:var(--text3)">${r.value}/5</span></div>
+          <div class="ac-meta">${fmtDate(r.created_at)}</div>
+        </div>`;
+      });
+    } else if (tab === 'ratings') {
+      html = `<div class="no-activity">No ratings yet.<br>Search for a number to get started.</div>`;
+    }
+  }
+
+  if (tab === 'all' && !myComments.length && !myRatings.length) {
+    html = `<div class="no-activity">No activity yet.<br>Search for a number to comment or rate.</div>`;
+  }
+
+  document.getElementById('profile-activity').innerHTML = html;
+}
+
+function switchTab(tab) { loadProfileActivity(tab); }
+
+// ── INIT ──
+loadCount();
+</script>
+</body>
+</html>
