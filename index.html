@@ -456,12 +456,108 @@
   .toast.success { border-color: #1a3a25; color: var(--green-text); }
   .toast.error { border-color: #3a1a1a; color: var(--red-text); }
 
-  @media (max-width: 600px) {
-    .hero { padding: 40px 16px 32px; }
-    .hero h1 { font-size: 22px; }
-    .main, .detail-wrap, .profile-wrap { padding-left: 16px; padding-right: 16px; }
-    .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
-    .stat-box .sn { font-size: 22px; }
+  /* ── MOBILE FIRST — base styles are for mobile, desktop overrides at min-width ── */
+
+  /* Nav */
+  .nav { padding: 12px 16px; }
+  .nav-logo { font-size: 14px; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; }
+  .nav-user { padding: 7px 10px; font-size: 12px; }
+
+  /* Hero */
+  .hero { padding: 36px 16px 28px; }
+  .hero h1 { font-size: 24px; }
+  .hero .sub1 { font-size: 13px; }
+  .hero .sub2 { font-size: 12px; margin-bottom: 24px; }
+  .search-wrap input { font-size: 16px; padding: 14px 44px 14px 16px; }
+
+  /* Main layout */
+  .main { padding: 0 16px 60px; }
+  .detail-wrap { padding: 20px 16px 60px; }
+  .profile-wrap { padding: 20px 16px 60px; }
+
+  /* Add number */
+  .add-row input { font-size: 16px; }
+  .btn { padding: 11px 16px; font-size: 14px; }
+
+  /* DB stats */
+  .db-stats { padding: 24px 16px; }
+  .db-stats .count { font-size: 42px; }
+
+  /* Detail */
+  .detail-num { font-size: 22px; }
+  .back-btn { padding: 8px 14px; font-size: 13px; }
+
+  /* Rating stars — bigger tap targets on mobile */
+  .star-row span { font-size: 36px; }
+  .rating-num { font-size: 32px; }
+  .rating-stars { font-size: 18px; }
+  .rating-block { padding: 16px; }
+
+  /* Comments */
+  .add-comment input { font-size: 16px; padding: 13px 14px; }
+  .comment-footer .btn-primary { padding: 10px 16px; }
+
+  /* Profile stats — stack if very narrow */
+  .stat-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-box { padding: 12px 8px; }
+  .stat-box .sn { font-size: 22px; }
+  .stat-box .sl { font-size: 10px; }
+
+  /* Profile header */
+  .avatar { width: 50px; height: 50px; font-size: 18px; }
+  .profile-info h2 { font-size: 18px; }
+
+  /* Tabs */
+  .tab-btn { padding: 8px 12px; font-size: 13px; }
+
+  /* Modal */
+  .modal { width: calc(100vw - 32px); padding: 24px 20px; }
+
+  /* Already commented block */
+  .already-block { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .already-block .btn-danger { align-self: flex-end; }
+
+  /* Badges wrap nicely */
+  .badges { gap: 6px; }
+  .badge { font-size: 11px; }
+
+  /* Member gate */
+  .member-gate { flex-wrap: wrap; gap: 8px; }
+  .member-gate .gate-btns { width: 100%; display: flex; gap: 6px; }
+  .member-gate .gate-btns button { flex: 1; }
+
+  /* Search dropdown */
+  .search-item { padding: 12px 16px; }
+  .search-item .si-num { font-size: 15px; }
+
+  /* Desktop overrides */
+  @media (min-width: 600px) {
+    .nav { padding: 16px 24px; }
+    .nav-logo { font-size: 15px; }
+    .hero { padding: 64px 24px 48px; }
+    .hero h1 { font-size: 28px; }
+    .hero .sub1 { font-size: 14px; }
+    .hero .sub2 { font-size: 13px; margin-bottom: 32px; }
+    .main { padding: 0 24px 80px; }
+    .detail-wrap { padding: 24px 24px 80px; }
+    .profile-wrap { padding: 24px 24px 80px; }
+    .detail-num { font-size: 28px; }
+    .db-stats { padding: 32px; }
+    .db-stats .count { font-size: 48px; }
+    .star-row span { font-size: 28px; }
+    .rating-num { font-size: 36px; }
+    .stat-grid { gap: 10px; }
+    .stat-box { padding: 16px; }
+    .stat-box .sn { font-size: 28px; }
+    .stat-box .sl { font-size: 11px; }
+    .avatar { width: 60px; height: 60px; font-size: 20px; }
+    .profile-info h2 { font-size: 20px; }
+    .modal { width: 320px; padding: 32px; }
+    .already-block { flex-direction: row; align-items: center; }
+    .member-gate { flex-wrap: nowrap; }
+    .member-gate .gate-btns { width: auto; }
+    .member-gate .gate-btns button { flex: none; }
   }
 </style>
 </head>
