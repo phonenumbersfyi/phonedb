@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Phone Numbers</title>
 <meta name="description" content="Search, submit, and review phone numbers. Community-powered phone number database." />
 <!-- Google tag (gtag.js) -->
@@ -417,7 +417,7 @@
     width: 100%; padding: 11px 14px;
     background: var(--bg2); color: var(--text);
     border: 1px solid var(--border2); border-radius: 6px;
-    font-size: 16px; font-family: var(--sans);
+    font-size: 14px; font-family: var(--sans);
     outline: none; margin-bottom: 10px;
     transition: border-color 0.15s;
   }
@@ -765,12 +765,7 @@ function openModal(mode) {
   document.getElementById('modal-bg').classList.add('open');
   setTimeout(() => document.getElementById(modalMode === 'login' ? 'modal-email' : 'modal-name').focus(), 100);
 }
-function closeModal() {
-  document.getElementById('modal-bg').classList.remove('open');
-  // reset iOS zoom after modal closes
-  const viewport = document.querySelector('meta[name=viewport]');
-  viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
 
 async function submitAuth() {
   const btn = document.getElementById('modal-submit');
@@ -826,33 +821,7 @@ async function doSearch(q, raw) {
   const dropdown = document.getElementById('search-dropdown');
   dropdown.innerHTML = `<div class="search-item"><span class="si-meta"><span class="spinner"></span>Searching…</span></div>`;
   dropdown.classList.add('open');
-
-  try {
-    const { data, error } = await db.from('numbers').select('*').eq('raw', q).limit(1);
-    if (error) throw error;
-    if (!data || !data.length) {
-      dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">No exact match found for "${raw}"</span></div>`;
-      return;
-    }
-    // get comment count and avg rating separately
-    const num = data[0];
-    const [commentsRes, ratingsRes] = await Promise.all([
-      db.from('comments').select('id', { count: 'exact', head: true }).eq('number_id', num.id),
-      db.from('ratings').select('value').eq('number_id', num.id)
-    ]);
-    const commentCount = commentsRes.count || 0;
-    const ratings = ratingsRes.data || [];
-    const avg = ratings.length ? ratings.reduce((a,b) => a + b.value, 0) / ratings.length : null;
-    const stars = avg !== null ? `<span style="color:var(--accent);font-size:11px">${starsStr(avg)}</span>` : '';
-    dropdown.innerHTML = `<div class="search-item" onclick="openDetail('${num.id}')">
-      <span class="si-num">${num.display}</span>
-      <span class="si-meta">${stars}<span>${commentCount} comment${commentCount!=1?'s':''}</span></span>
-    </div>`;
-  } catch(e) {
-    dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">Error searching — please try again</span></div>`;
-    console.error('Search error:', e);
-  }
-}
+  const { data } = await db.from('numbers_summary').select('*').eq('raw', q).limit(1);
   if (!data || !data.length) {
     dropdown.innerHTML = `<div class="search-item"><span class="si-meta" style="color:var(--text3)">No exact match found for "${raw}"</span></div>`;
     return;
@@ -908,23 +877,13 @@ async function openDetail(id) {
   showView('detail');
 
   const [numRes, commentsRes, ratingsRes] = await Promise.all([
-    db.from('numbers').select('*').eq('id', id).single(),
+    db.from('numbers_summary').select('*').eq('id', id).single(),
     db.from('comments').select('*').eq('number_id', id).order('created_at', { ascending: false }),
     db.from('ratings').select('*').eq('number_id', id)
   ]);
 
   if (numRes.error || !numRes.data) { showToast('Number not found', 'error'); showView('home'); return; }
-  const ratings = ratingsRes.data || [];
-  const avg = ratings.length ? ratings.reduce((a,b) => a + b.value, 0) / ratings.length : null;
-  const comments = commentsRes.data || [];
-  currentEntry = {
-    ...numRes.data,
-    comments,
-    ratings,
-    comment_count: comments.length,
-    rating_count: ratings.length,
-    avg_rating: avg
-  };
+  currentEntry = { ...numRes.data, comments: commentsRes.data || [], ratings: ratingsRes.data || [] };
   selectedRating = 0;
 
   renderDetailHeader();
@@ -994,10 +953,9 @@ async function submitRating(val) {
     if (data) currentEntry.ratings.push(data);
   }
   selectedRating = val;
-  const ratings = currentEntry.ratings;
-  const avg = ratings.length ? ratings.reduce((a,b) => a + b.value, 0) / ratings.length : null;
-  currentEntry.avg_rating = avg;
-  currentEntry.rating_count = ratings.length;
+  // refresh summary
+  const { data: fresh } = await db.from('numbers_summary').select('*').eq('id', currentEntry.id).single();
+  if (fresh) { currentEntry = { ...currentEntry, ...fresh }; }
   renderRatingBlock();
   renderDetailHeader();
   showToast('Rating saved', 'success');
